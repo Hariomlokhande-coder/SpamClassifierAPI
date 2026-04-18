@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - AI Inbox Sentinel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #FCFBF4; /* Premium modern cream */
+            --surface-glass: rgba(255, 255, 255, 0.65);
+            --surface-glass-hover: rgba(255, 255, 255, 0.9);
+            --border-glass: rgba(255, 255, 255, 0.6);
+            --text-primary: #0F172A;
+            --text-secondary: #475569;
+            --glow-primary: #7C3AED;
+            --glow-secondary: #DB2777;
+            --glow-tertiary: #2563EB;
+            --danger: #DC2626;
+            --success: #059669;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(circle at 15% 50%, rgba(124, 58, 237, 0.1), transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(219, 39, 119, 0.1), transparent 40%),
+                radial-gradient(circle at 50% 80%, rgba(37, 99, 235, 0.1), transparent 40%);
+            z-index: -1;
+            filter: blur(60px);
+            animation: gradientFloat 20s ease-in-out infinite alternate;
+        }
+
+        @@keyframes gradientFloat {
+            0% { transform: scale(1) translate(0px, 0px); }
+            50% { transform: scale(1.1) translate(20px, -20px); }
+            100% { transform: scale(1) translate(-20px, 20px); }
+        }
+
+        header {
+            padding: 2rem 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            background: rgba(252, 251, 244, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--glow-primary), var(--glow-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.05em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        main {
+            flex: 1;
+            padding: 4rem 5%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border-glass);
+        }
+
+        /* Glassmorphism utilities */
+        .glass-panel {
+            background: var(--surface-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">Sentinel AI</div>
+        <nav class="nav-links">
+            <a href="/" class="nav-link">Classifier</a>
+            <a href="#" class="nav-link auth-req" id="triggerTrainBtn" style="display: none;">Retrain Model</a>
+            <a href="/Home/Login" class="nav-link guest-only">Login</a>
+            <a href="/Home/Signup" class="nav-link guest-only">Sign up</a>
+            <a href="#" class="nav-link auth-req" id="logoutBtn" style="display: none;">Logout</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        @RenderBody()
+    </main>
+
+    <footer>
+        &copy; 2026 Sentinel AI. Advanced Machine Learning.
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const token = localStorage.getItem('jwtToken');
+            if (token) {
+                document.querySelectorAll('.guest-only').forEach(e => e.style.display = 'none');
+                document.querySelectorAll('.auth-req').forEach(e => e.style.display = '');
+            } else {
+                document.querySelectorAll('.guest-only').forEach(e => e.style.display = '');
+                document.querySelectorAll('.auth-req').forEach(e => e.style.display = 'none');
+            }
+        });
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('jwtToken');
+                window.location.href = '/Home/Login';
+            });
+        }
+
+        document.getElementById('triggerTrainBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const token = localStorage.getItem('jwtToken');
+            if (!token) return alert('Please login first');
+
+            const btn = e.target;
+            const originalText = btn.innerText;
+            btn.innerText = "Training...";
+            btn.style.color = "var(--glow-secondary)";
+            
+            try {
+                const response = await fetch('/api/spam/train?forceRetrain=true', { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.status === 401) {
+                    alert('Session expired. Please login.');
+                    localStorage.removeItem('jwtToken');
+                    window.location.href = '/Home/Login';
+                    return;
+                }
+                const data = await response.json();
+                alert(data.message || "Training request completed.");
+            } catch (err) {
+                alert("Error training model.");
+            } finally {
+                btn.innerText = originalText;
+                btn.style.color = "";
+            }
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

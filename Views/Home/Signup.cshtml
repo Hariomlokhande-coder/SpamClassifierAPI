@@ -1,0 +1,101 @@
+@{
+    ViewData["Title"] = "Sign Up";
+}
+
+<style>
+    .auth-container {
+        max-width: 400px;
+        margin: 4rem auto;
+        padding: 2.5rem;
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        animation: slideDown 0.5s ease-out forwards;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .form-control:focus {
+        border-color: #DB2777;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.2);
+    }
+    
+    .btn-primary {
+        background-color: #DB2777; 
+        color: white; 
+        border: none; 
+        border-radius: 8px;
+        padding: 0.75rem;
+        width: 100%;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .btn-primary:hover {
+        background-color: #BE185D;
+    }
+</style>
+
+<div class="auth-container">
+    <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 1.5rem; text-align: center;">Create Account</h2>
+    <div>
+        <input type="text" id="username" placeholder="Username" class="form-control" />
+        <input type="email" id="email" placeholder="Email" class="form-control" />
+        <input type="password" id="password" placeholder="Password" class="form-control" />
+        <button id="signupBtn" class="btn btn-primary">Sign Up</button>
+    </div>
+    <div id="signupMessage" style="color: #EF4444; margin-top: 1rem; text-align: center; font-weight: 500;"></div>
+    <div style="margin-top: 1.5rem; text-align: center; color: #4B5563;">
+        Already have an account? <a href="/Home/Login" style="color: #DB2777; text-decoration: none; font-weight: 600;">Login</a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('signupBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const messageEl = document.getElementById('signupMessage');
+            
+            if (!username || !email || !password) {
+                messageEl.textContent = 'All fields are required.';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    messageEl.textContent = text || 'Signup failed';
+                    return;
+                }
+                
+                alert('Account created successfully! Please login.');
+                window.location.href = '/Home/Login'; // redirect to login
+            } catch (err) {
+                messageEl.textContent = 'Network error.';
+            }
+        });
+    </script>
+}

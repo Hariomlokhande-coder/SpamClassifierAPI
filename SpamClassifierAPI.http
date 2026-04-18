@@ -1,0 +1,6 @@
+@SpamClassifierAPI_HostAddress = http://localhost:5211
+
+GET {{SpamClassifierAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

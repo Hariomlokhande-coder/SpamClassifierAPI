@@ -1,0 +1,409 @@
+@{
+    ViewData["Title"] = "Spam Classifier";
+}
+
+<script>
+    // Immediately redirect if not logged in
+    if (!localStorage.getItem('jwtToken')) {
+        window.location.href = '/Home/Login';
+    }
+</script>
+
+<style>
+    .hero {
+        text-align: center;
+        margin-bottom: 4rem;
+        animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    @@keyframes slideDown {
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 4rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 1rem;
+        background: linear-gradient(to right, #1E293B, #7C3AED, #DB2777);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.02em;
+    }
+
+    .hero-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .app-workspace {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        opacity: 0;
+        animation: fadeIn 1s 0.3s ease forwards;
+    }
+
+    @@keyframes fadeIn {
+        to { opacity: 1; }
+    }
+
+    .input-section, .result-section {
+        padding: 2.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    h2.section-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    h2.section-title::before {
+        content: '';
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--glow-primary), var(--glow-tertiary));
+    }
+
+    .textarea-wrapper {
+        position: relative;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    textarea {
+        width: 100%;
+        flex: 1;
+        min-height: 250px;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        padding: 1.5rem;
+        color: var(--text-primary);
+        font-family: 'Inter', sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
+        resize: none;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+
+    textarea:focus {
+        border-color: rgba(139, 92, 246, 0.5);
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+    }
+
+    textarea::placeholder {
+        color: rgba(15, 23, 42, 0.3);
+    }
+
+    .btn-predict {
+        background: linear-gradient(135deg, var(--glow-primary), var(--glow-secondary));
+        color: white;
+        border: none;
+        padding: 1.25rem 2rem;
+        border-radius: 16px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-predict::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(135deg, var(--glow-secondary), var(--glow-primary));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: 1;
+    }
+
+    .btn-predict span {
+        position: relative;
+        z-index: 2;
+    }
+
+    .btn-predict:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(236, 72, 153, 0.4);
+    }
+
+    .btn-predict:hover::after {
+        opacity: 1;
+    }
+
+    .btn-predict:active {
+        transform: translateY(1px);
+    }
+
+    /* Result State */
+    .result-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        opacity: 0.5;
+        transition: all 0.5s ease;
+    }
+
+    .result-content.active {
+        opacity: 1;
+    }
+
+    .verdict-badge {
+        font-family: 'Outfit', sans-serif;
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        text-shadow: 0 0 40px currentColor;
+    }
+
+    .verdict-badge.spam {
+        color: var(--danger);
+    }
+
+    .verdict-badge.safe {
+        color: var(--success);
+    }
+
+    .verdict-badge.neutral {
+        color: #f59e0b;
+    }
+
+    .confidence-meter {
+        width: 100%;
+        height: 8px;
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1.5rem 0;
+    }
+
+    .confidence-fill {
+        height: 100%;
+        width: 0%;
+        background: currentColor;
+        border-radius: 4px;
+        transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .confidence-text {
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+    }
+
+    .confidence-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .waiting-text {
+        font-size: 1.2rem;
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+
+    /* Loader */
+    .loader {
+        display: none;
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--glow-primary);
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading .loader {
+        display: inline-block;
+    }
+
+    .loading .waiting-text {
+        display: none;
+    }
+
+    @@media (max-width: 900px) {
+        .app-workspace {
+            grid-template-columns: 1fr;
+        }
+        .hero-title {
+            font-size: 2.5rem;
+        }
+    }
+</style>
+
+<div class="hero">
+    <h1 class="hero-title">Intelligent Mail Scanning</h1>
+    <p class="hero-subtitle">Paste any email or message below. Our ML.NET model will instantly analyze the contents and calculate the probability of it being spam.</p>
+</div>
+
+<div class="app-workspace">
+    <!-- Input Section -->
+    <div class="input-section glass-panel">
+        <h2 class="section-title">Message Input</h2>
+        <div class="textarea-wrapper">
+            <textarea id="messageInput" placeholder="Paste the suspicious message here..."></textarea>
+        </div>
+        <button id="predictBtn" class="btn-predict"><span>Analyze Message</span></button>
+    </div>
+
+    <!-- Result Section -->
+    <div class="result-section glass-panel">
+        <h2 class="section-title">Analysis Verdict</h2>
+        <div class="result-content" id="resultContainer">
+            <span class="waiting-text" id="waitingText">Awaiting your command...</span>
+            <div class="loader" id="loader"></div>
+            
+            <div id="verdictData" style="display: none; width: 100%;">
+                <div class="verdict-badge" id="verdictBadge">SAFE</div>
+                
+                <div class="confidence-meter">
+                    <div class="confidence-fill" id="confidenceFill"></div>
+                </div>
+                
+                <div class="confidence-text" style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    Probability: <span class="confidence-value" id="probabilityValue">0</span><br />
+                    Score: <span class="confidence-value" id="scoreValue">0</span>
+                </div>
+                <div class="confidence-text">
+                    Model Confidence: <span class="confidence-value" id="confidenceValue">0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const predictBtn = document.getElementById('predictBtn');
+        const messageInput = document.getElementById('messageInput');
+        const resultContainer = document.getElementById('resultContainer');
+        const waitingText = document.getElementById('waitingText');
+        const verdictData = document.getElementById('verdictData');
+        const verdictBadge = document.getElementById('verdictBadge');
+        const confidenceFill = document.getElementById('confidenceFill');
+        const confidenceValue = document.getElementById('confidenceValue');
+        const probabilityValue = document.getElementById('probabilityValue');
+        const scoreValue = document.getElementById('scoreValue');
+
+        predictBtn.addEventListener('click', async () => {
+            const text = messageInput.value.trim();
+            if(!text) {
+                alert('Please enter a message to analyze.');
+                return;
+            }
+
+            // UI Loading State
+            resultContainer.classList.add('loading');
+            resultContainer.classList.remove('active');
+            verdictData.style.display = 'none';
+            waitingText.style.display = 'none';
+            predictBtn.style.opacity = '0.7';
+            predictBtn.disabled = true;
+
+            try {
+                const token = localStorage.getItem('jwtToken');
+                if (!token) {
+                    alert('You must be logged in to analyze messages.');
+                    window.location.href = '/Home/Login';
+                    return;
+                }
+
+                const response = await fetch('/api/spam/predict', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ message: text }) // Note: casing must match payload bindings
+                });
+
+                if(response.status === 401) {
+                    alert('Your session has expired or is invalid. Please login again.');
+                    localStorage.removeItem('jwtToken');
+                    window.location.href = '/Home/Login';
+                    return;
+                }
+
+                if(!response.ok) {
+                    const errorText = await response.text();
+                    let errorData = { error: errorText };
+                    try { errorData = JSON.parse(errorText); } catch(e){}
+                    throw new Error(errorData.error || 'Server returned an error');
+                }
+
+                const data = await response.json();
+                
+                // Process verdict
+                const isSpam = data.isSpam;
+                const probability = data.confidence * 100;
+                
+                probabilityValue.textContent = (data.probability !== undefined && data.probability !== null) ? data.probability.toFixed(6) : "N/A";
+                scoreValue.textContent = (data.score !== undefined && data.score !== null) ? data.score.toFixed(6) : "N/A";
+
+                // Setup visual styles based on result
+                if (probability === 50 && !isSpam) {
+                    // Graceful Neutral handling
+                    verdictBadge.textContent = "INCONCLUSIVE";
+                    verdictBadge.className = "verdict-badge neutral";
+                    confidenceFill.style.color = "#f59e0b";
+                } else if(isSpam) {
+                    verdictBadge.textContent = "SPAM DETECTED";
+                    verdictBadge.className = "verdict-badge spam";
+                    confidenceFill.style.color = "var(--danger)";
+                } else {
+                    verdictBadge.textContent = "LEGITIMATE";
+                    verdictBadge.className = "verdict-badge safe";
+                    confidenceFill.style.color = "var(--success)";
+                }
+
+                confidenceValue.textContent = probability.toFixed(2) + '%';
+                
+                // Show Result
+                verdictData.style.display = 'block';
+                resultContainer.classList.add('active');
+                
+                // Trigger meter animation
+                setTimeout(() => {
+                    confidenceFill.style.width = probability + '%';
+                }, 50);
+
+            } catch (err) {
+                alert(err.message);
+                waitingText.style.display = 'block';
+                waitingText.textContent = "Error occurred. Try again.";
+            } finally {
+                resultContainer.classList.remove('loading');
+                predictBtn.style.opacity = '1';
+                predictBtn.disabled = false;
+            }
+        });
+    </script>
+}
